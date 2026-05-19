@@ -111,7 +111,7 @@ export default function Home() {
     } catch {
       setStatus('error')
       setMessages([
-        { id: crypto.randomUUID(), role: 'assistant', text: 'Error al descargar el video de YouTube. ¿Está corriendo el backend?', timestamp: Date.now() },
+        { id: crypto.randomUUID(), role: 'assistant', text: '⚠️ Error al descargar el video de YouTube. Descargalo manualmente (ej: con https://9convert.com) y subí el archivo .mp4 con "Subir partido".', timestamp: Date.now() },
       ])
     }
   }
