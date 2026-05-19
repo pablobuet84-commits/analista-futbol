@@ -6,7 +6,7 @@ import uuid, os, subprocess, json
 
 from gemini_service import ask_about_video
 
-app = FastAPI(title="Analista Futbol API")
+app = FastAPI(title="Pitubot API")
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", '["http://localhost:3000"]')
 app.add_middleware(
@@ -57,7 +57,9 @@ def add_youtube(req: YoutubeRequest):
 
     try:
         subprocess.run(
-            ["yt-dlp", "-f", "best[height<=720]", "-o", dest, req.url],
+            ["yt-dlp", "-f", "best[height<=720]", "-o", dest,
+             "--extractor-args", "youtube:player_client=android",
+             req.url],
             check=True, capture_output=True, timeout=300,
         )
     except subprocess.CalledProcessError as e:

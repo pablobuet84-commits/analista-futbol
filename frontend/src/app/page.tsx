@@ -55,7 +55,7 @@ export default function Home() {
       const welcomeMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: `Partido "${file.name}" recibido. Preguntame lo que quieras sobre el video.`,
+        text: `⚽ Partido "${file.name}" recibido. Preguntame lo que quieras sobre el video.`,
         timestamp: Date.now(),
       }
       setMessages([welcomeMsg])
@@ -101,7 +101,7 @@ export default function Home() {
       const welcomeMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: `Video de YouTube recibido. Preguntame lo que quieras sobre el partido.`,
+        text: `📹 Video de YouTube recibido. Preguntame lo que quieras sobre el partido.`,
         timestamp: Date.now(),
       }
       setMessages([welcomeMsg])
@@ -213,7 +213,7 @@ export default function Home() {
   return (
     <main style={styles.page}>
       <header style={styles.toolbar}>
-        <h1 style={styles.logo}>Analista Fútbol</h1>
+        <h1 style={styles.logo}>⚽ Pitubot</h1>
         <div style={styles.toolbarRight}>
           <button onClick={() => { listSessions().then(setSessions).catch(() => {}); setShowHistory(!showHistory) }} style={styles.historyBtn}>
             Historial

@@ -36,7 +36,7 @@ export default function ChatPanel({ messages, onSend, onSeek, disabled }: Props)
   return (
     <aside style={styles.panel}>
       <header style={styles.header}>
-        <h2 style={styles.title}>Análisis táctico</h2>
+        <h2 style={styles.title}>📋 Análisis táctico</h2>
       </header>
 
       <div ref={listRef} style={styles.list}>
