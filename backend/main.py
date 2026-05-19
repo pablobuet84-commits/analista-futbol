@@ -8,13 +8,21 @@ from gemini_service import ask_about_video
 
 app = FastAPI(title="Pitubot API")
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", '["http://localhost:3000"]')
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=json.loads(CORS_ORIGINS),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
+if CORS_ORIGINS == "*":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=json.loads(CORS_ORIGINS),
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
