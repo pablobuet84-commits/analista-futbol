@@ -2,15 +2,16 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-import uuid, os, subprocess
+import uuid, os, subprocess, json
 
 from gemini_service import ask_about_video
 
 app = FastAPI(title="Analista Futbol API")
 
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", '["http://localhost:3000"]')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=json.loads(CORS_ORIGINS),
     allow_methods=["*"],
     allow_headers=["*"],
 )
