@@ -10,7 +10,7 @@ import { createSession, addMessage, listSessions, getSession, deleteSession } fr
 import type { AnalisisSession } from '@/lib/analisis-service'
 import { useIsMobile } from '@/lib/use-responsive'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function Home() {
   const [video, setVideo] = useState<VideoFile | null>(null)
