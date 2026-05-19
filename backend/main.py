@@ -39,6 +39,37 @@ class YoutubeRequest(BaseModel):
     url: str
 
 
+class UrlUploadRequest(BaseModel):
+    filename: str
+    url: str
+
+
+@app.post("/upload-url")
+async def upload_from_url(req: UrlUploadRequest):
+    import httpx
+
+    task_id = str(uuid.uuid4())
+    ext = os.path.splitext(req.filename or "video.mp4")[1] or ".mp4"
+    dest = os.path.join(UPLOAD_DIR, f"{task_id}{ext}")
+
+    try:
+        async with httpx.AsyncClient(timeout=600) as client:
+            response = await client.get(req.url)
+            response.raise_for_status()
+            with open(dest, "wb") as f:
+                f.write(response.content)
+    except Exception as e:
+        return {"error": f"No se pudo descargar el video desde Firebase: {str(e)}"}
+
+    tasks[task_id] = {
+        "filename": req.filename,
+        "status": "uploaded",
+        "path": dest,
+    }
+
+    return {"task_id": task_id, "filename": req.filename, "status": "uploaded"}
+
+
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
     task_id = str(uuid.uuid4())

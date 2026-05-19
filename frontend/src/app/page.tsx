@@ -9,6 +9,8 @@ import { extractTimestamps } from '@/lib/timestamps'
 import { createSession, addMessage, listSessions, getSession, deleteSession } from '@/lib/analisis-service'
 import type { AnalisisSession } from '@/lib/analisis-service'
 import { useIsMobile } from '@/lib/use-responsive'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -32,19 +34,29 @@ export default function Home() {
   }
 
   async function handleFileSelected(file: File) {
-    const url = URL.createObjectURL(file)
-    setVideo({ name: file.name, size: file.size, url })
+    const blobUrl = URL.createObjectURL(file)
+    setVideo({ name: file.name, size: file.size, url: blobUrl })
     setShowHistory(false)
     setStatus('uploading')
     setMessages([])
     setCurrentSessionId(null)
     filenameRef.current = file.name
 
-    const formData = new FormData()
-    formData.append('file', file)
-
     try {
-      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData })
+      const storageRef = ref(storage, `videos/${Date.now()}_${file.name}`)
+      const uploadTask = uploadBytesResumable(storageRef, file)
+
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on('state_changed', null, reject, resolve)
+      })
+
+      const downloadUrl = await getDownloadURL(storageRef)
+
+      const res = await fetch(`${API_BASE}/upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, url: downloadUrl }),
+      })
       if (!res.ok) throw new Error('Upload failed')
       const data = await res.json()
       taskIdRef.current = data.task_id
