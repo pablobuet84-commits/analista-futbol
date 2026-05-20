@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-import uuid, os, subprocess, json, shutil
+import uuid, os, subprocess, json, shutil, tempfile, requests
 from dotenv import load_dotenv
 
 from gemini_service import ask_about_video
@@ -52,6 +52,7 @@ _load_tasks()
 class AskRequest(BaseModel):
     task_id: str
     question: str
+    storage_url: str = ""
 
 
 class YoutubeRequest(BaseModel):
@@ -210,5 +211,27 @@ def ask_question(req: AskRequest):
     if task["status"] != "uploaded":
         return {"error": "video not ready"}
 
-    answer = ask_about_video(req.task_id, task["path"], req.question)
-    return {"task_id": req.task_id, "question": req.question, "answer": answer}
+    video_path = task["path"]
+
+    # Use local file if exists, otherwise download from storage_url
+    temp_file = None
+    if not os.path.exists(video_path) and req.storage_url:
+        try:
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            r = requests.get(req.storage_url, stream=True, timeout=300)
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=8192):
+                temp_file.write(chunk)
+            temp_file.close()
+            video_path = temp_file.name
+        except Exception as e:
+            if temp_file:
+                os.unlink(temp_file.name)
+            return {"error": f"Error al descargar el video: {str(e)}"}
+
+    try:
+        answer = ask_about_video(req.task_id, video_path, req.question)
+        return {"task_id": req.task_id, "question": req.question, "answer": answer}
+    finally:
+        if temp_file and os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)

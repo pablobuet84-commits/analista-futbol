@@ -9,7 +9,8 @@ import { extractTimestamps } from '@/lib/timestamps'
 import { createSession, addMessage, listSessions, getSession, deleteSession } from '@/lib/analisis-service'
 import type { AnalisisSession } from '@/lib/analisis-service'
 import { useIsMobile } from '@/lib/use-responsive'
-
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { storage } from '@/lib/firebase'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const taskIdRef = useRef<string | null>(null)
+  const storageUrlRef = useRef<string>('')
   const isMobile = useIsMobile()
   const filenameRef = useRef<string>('')
 
@@ -34,8 +36,6 @@ export default function Home() {
   }
 
   async function handleFileSelected(file: File) {
-    const url = URL.createObjectURL(file)
-    setVideo({ name: file.name, size: file.size, url })
     setShowHistory(false)
     setStatus('uploading')
     setUploadProgress(0)
@@ -44,44 +44,28 @@ export default function Home() {
     filenameRef.current = file.name
 
     try {
-      let taskId: string
-      const CHUNK_SIZE = 5 * 1024 * 1024
+      const taskId = crypto.randomUUID()
+      const storageRef = ref(storage, `videos/${taskId}-${file.name}`)
+      const uploadTask = uploadBytesResumable(storageRef, file)
 
-      if (file.size > CHUNK_SIZE) {
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-        const initRes = await fetch(`${API_BASE}/upload/init`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, total_chunks: totalChunks }),
-        })
-        if (!initRes.ok) throw new Error('Init failed')
-        const initData = await initRes.json()
-        taskId = initData.task_id
-
-        for (let i = 0; i < totalChunks; i++) {
-          const start = i * CHUNK_SIZE
-          const end = Math.min(start + CHUNK_SIZE, file.size)
-          const chunk = file.slice(start, end)
-          const formData = new FormData()
-          formData.append('file', chunk)
-          const chunkRes = await fetch(`${API_BASE}/upload/chunk/${taskId}?chunk_index=${i}`, {
-            method: 'POST',
-            body: formData,
-          })
-          if (!chunkRes.ok) throw new Error('Chunk failed')
-          setUploadProgress(Math.round(((i + 1) / totalChunks) * 100))
-        }
-      } else {
-        const formData = new FormData()
-        formData.append('file', file)
-        const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData })
-        if (!res.ok) throw new Error('Upload failed')
-        const data = await res.json()
-        taskId = data.task_id
-      }
+      const downloadUrl = await new Promise<string>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+            setUploadProgress(pct)
+          },
+          reject,
+          () => getDownloadURL(uploadTask.snapshot.ref).then(resolve),
+        )
+      })
 
       taskIdRef.current = taskId
-      const sid = await createSession(file.name, taskId)
+      storageUrlRef.current = downloadUrl
+      const videoUrl = downloadUrl
+      setVideo({ name: file.name, size: file.size, url: videoUrl })
+
+      const sid = await createSession(file.name, taskId, videoUrl)
       setCurrentSessionId(sid)
 
       const welcomeMsg: Message = {
@@ -97,7 +81,7 @@ export default function Home() {
     } catch {
       setStatus('error')
       setMessages([
-        { id: crypto.randomUUID(), role: 'assistant', text: 'Error al subir el video. ¿Está corriendo el backend?', timestamp: Date.now() },
+        { id: crypto.randomUUID(), role: 'assistant', text: 'Error al subir el video a Firebase. Revisá la conexión o las reglas de Storage.', timestamp: Date.now() },
       ])
     }
   }
@@ -123,11 +107,11 @@ export default function Home() {
         return
       }
       taskIdRef.current = data.task_id
-
       const videoUrl = `${API_BASE}/video/${data.task_id}`
+      storageUrlRef.current = videoUrl
       setVideo({ name: data.filename, size: 0, url: videoUrl })
 
-      const sid = await createSession(data.filename, data.task_id)
+      const sid = await createSession(data.filename, data.task_id, videoUrl)
       setCurrentSessionId(sid)
 
       const welcomeMsg: Message = {
@@ -167,7 +151,7 @@ export default function Home() {
         const res = await fetch(`${API_BASE}/ask`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ task_id: taskId, question: text }),
+          body: JSON.stringify({ task_id: taskId, question: text, storage_url: storageUrlRef.current }),
         })
         if (!res.ok) throw new Error('Ask failed')
         const data = await res.json()
@@ -200,8 +184,9 @@ export default function Home() {
     setCurrentSessionId(session.id)
     setMessages(session.messages)
     taskIdRef.current = session.taskId
+    storageUrlRef.current = session.storageUrl
     filenameRef.current = session.filename
-    setVideo({ name: session.filename, size: 0, url: `${API_BASE}/video/${session.taskId}` })
+    setVideo({ name: session.filename, size: 0, url: session.storageUrl || `${API_BASE}/video/${session.taskId}` })
     setStatus('done')
   }
 

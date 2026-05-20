@@ -4,3 +4,4 @@ python-multipart==0.0.9
 google-genai==2.4.0
 python-dotenv==1.2.2
 yt-dlp
+requests
