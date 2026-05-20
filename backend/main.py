@@ -119,18 +119,29 @@ def add_youtube(req: YoutubeRequest):
         if os.path.exists(node_path):
             env["PATH"] = f"{os.path.dirname(node_path)}:{env.get('PATH', '')}"
 
-        subprocess.run(
+        cookies_path = os.path.join(UPLOAD_DIR, "cookies.txt")
+        cookies_arg = []
+        if os.path.exists(cookies_path):
+            cookies_arg = ["--cookies", cookies_path]
+
+        result = subprocess.run(
             ["yt-dlp", "-f", "best[height<=720]", "-o", dest,
-             "--extractor-args", "youtube:player_client=android",
-             "--extractor-args", "youtube:skip=webpage",
+             "--js-runtimes", "node",
+             "--extractor-args", "youtube:player_client=android;skip=webpage",
+             "--retries", "10",
+             "--sleep-interval", "5",
+             *cookies_arg,
              req.url],
-            check=True, capture_output=True, timeout=300, env=env,
+            capture_output=True, timeout=600, env=env,
         )
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode()[:500] if e.stderr else "Error desconocido"
-        return {"error": f"No se pudo descargar el video: {error_msg}"}
+        error_msg = e.stderr.decode(errors="replace")[:500] if e.stderr else "Error desconocido"
+        stdout_msg = e.stdout.decode(errors="replace")[:200] if e.stdout else ""
+        return {"error": f"No se pudo descargar el video: {error_msg}\n{stdout_msg}"}
     except subprocess.TimeoutExpired:
-        return {"error": "La descarga del video excedió el tiempo máximo (5 min)"}
+        return {"error": "La descarga del video excedió el tiempo máximo (10 min)"}
 
     filename = f"YouTube - {task_id[:8]}.mp4"
     tasks[task_id] = {
