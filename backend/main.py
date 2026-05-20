@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-import uuid, os, subprocess, json
+import uuid, os, subprocess, json, shutil
 
 from gemini_service import ask_about_video
 
@@ -114,11 +114,17 @@ def add_youtube(req: YoutubeRequest):
     dest = os.path.join(UPLOAD_DIR, f"{task_id}.mp4")
 
     try:
+        env = os.environ.copy()
+        node_path = shutil.which("node") or "/opt/render/project/.node/bin/node"
+        if os.path.exists(node_path):
+            env["PATH"] = f"{os.path.dirname(node_path)}:{env.get('PATH', '')}"
+
         subprocess.run(
             ["yt-dlp", "-f", "best[height<=720]", "-o", dest,
-             "--js-runtimes", "node",
+             "--extractor-args", "youtube:player_client=android",
+             "--extractor-args", "youtube:skip=webpage",
              req.url],
-            check=True, capture_output=True, timeout=300,
+            check=True, capture_output=True, timeout=300, env=env,
         )
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode()[:500] if e.stderr else "Error desconocido"
