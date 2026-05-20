@@ -21,6 +21,7 @@ export default function Home() {
   const [sessions, setSessions] = useState<AnalisisSession[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const taskIdRef = useRef<string | null>(null)
   const isMobile = useIsMobile()
   const filenameRef = useRef<string>('')
@@ -37,6 +38,7 @@ export default function Home() {
     setVideo({ name: file.name, size: file.size, url })
     setShowHistory(false)
     setStatus('uploading')
+    setUploadProgress(0)
     setMessages([])
     setCurrentSessionId(null)
     filenameRef.current = file.name
@@ -67,6 +69,7 @@ export default function Home() {
             body: formData,
           })
           if (!chunkRes.ok) throw new Error('Chunk failed')
+          setUploadProgress(Math.round(((i + 1) / totalChunks) * 100))
         }
       } else {
         const formData = new FormData()
@@ -268,6 +271,14 @@ export default function Home() {
           </aside>
         )}
         <div style={videoColStyle}>
+          {status === 'uploading' && uploadProgress > 0 && (
+            <div style={styles.progressContainer}>
+              <div style={styles.progressBar}>
+                <div style={{...styles.progressFill, width: `${uploadProgress}%`}} />
+              </div>
+              <span style={styles.progressText}>{uploadProgress}%</span>
+            </div>
+          )}
           <VideoPlayer video={video} markers={markers} seekTime={seekTime} onSeek={handleSeek} />
         </div>
         <div style={chatColStyle}>
@@ -388,5 +399,33 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 2,
     padding: '1rem 1rem 1rem 0',
     minWidth: 0,
+  },
+  progressContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0.75rem 1rem',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius)',
+  },
+  progressBar: {
+    flex: 1,
+    height: '0.5rem',
+    backgroundColor: 'var(--bg-tertiary)',
+    borderRadius: '0.25rem',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: 'var(--accent)',
+    borderRadius: '0.25rem',
+    transition: 'width 0.3s ease',
+  },
+  progressText: {
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    color: 'var(--accent)',
+    minWidth: '2.5rem',
+    textAlign: 'right',
   },
 }
