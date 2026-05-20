@@ -1,5 +1,10 @@
 # ⚽ Pitubot — Analista de Fútbol con IA
 
+> ⚠️ **PENDIENTE AL 20/5/2026:**
+> - **Firebase Storage** no deja subir videos — hay que ajustar reglas (ver sección 1 abajo)
+> - **YouTube** bloqueado en Render — hay que probar Cookie-Editor o descarga manual (ver sección 2)
+> - El resto (subida a Firebase, player, chat Gemini, historial Firestore) ya está codeado y deployado
+
 App de análisis táctico de videos de fútbol usando Gemini AI.
 
 ## Links
