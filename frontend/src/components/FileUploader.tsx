@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react'
 import type { AnalysisStatus } from '@/types'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 interface Props {
   onFileSelected: (file: File) => void
   onYoutubeUrl: (url: string) => void
@@ -11,8 +13,10 @@ interface Props {
 
 export default function FileUploader({ onFileSelected, onYoutubeUrl, status }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const cookiesRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [cookiesMsg, setCookiesMsg] = useState('')
   const isWorking = status === 'uploading' || status === 'processing'
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -29,6 +33,24 @@ export default function FileUploader({ onFileSelected, onYoutubeUrl, status }: P
     setFileName(trimmed)
     setYoutubeUrl('')
     onYoutubeUrl(trimmed)
+  }
+
+  async function handleCookiesUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setCookiesMsg('Subiendo cookies...')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API_BASE}/upload/cookies`, { method: 'POST', body: formData })
+      if (res.ok) {
+        setCookiesMsg('✅ Cookies guardadas')
+      } else {
+        setCookiesMsg('❌ Error al guardar cookies')
+      }
+    } catch {
+      setCookiesMsg('❌ Error de conexión')
+    }
   }
 
   return (
@@ -66,6 +88,22 @@ export default function FileUploader({ onFileSelected, onYoutubeUrl, status }: P
       >
         Cargar
       </button>
+      <input
+        ref={cookiesRef}
+        type="file"
+        accept=".txt"
+        onChange={handleCookiesUpload}
+        style={{ display: 'none' }}
+      />
+      <button
+        type="button"
+        onClick={() => cookiesRef.current?.click()}
+        style={styles.cookiesBtn}
+        title="Subir cookies.txt para YouTube"
+      >
+        🍪
+      </button>
+      {cookiesMsg && <span style={styles.cookiesMsg}>{cookiesMsg}</span>}
       {fileName && <span style={styles.label}>{fileName}</span>}
     </div>
   )
@@ -109,5 +147,17 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     maxWidth: '16rem',
+  },
+  cookiesBtn: {
+    padding: '0.5rem 0.75rem',
+    fontSize: '1rem',
+    border: '0.0625rem solid var(--border)',
+    borderRadius: 'var(--radius)',
+    backgroundColor: 'var(--bg-secondary)',
+    cursor: 'pointer',
+  },
+  cookiesMsg: {
+    fontSize: '0.75rem',
+    color: 'var(--text-secondary)',
   },
 }

@@ -108,6 +108,14 @@ async def upload_video(file: UploadFile = File(...)):
     return {"task_id": task_id, "filename": file.filename, "status": "uploaded"}
 
 
+@app.post("/upload/cookies")
+async def upload_cookies(file: UploadFile = File(...)):
+    dest = os.path.join(UPLOAD_DIR, "cookies.txt")
+    content = await file.read()
+    with open(dest, "wb") as f:
+        f.write(content)
+    return {"status": "ok", "size": len(content)}
+
 @app.post("/youtube")
 def add_youtube(req: YoutubeRequest):
     task_id = str(uuid.uuid4())
