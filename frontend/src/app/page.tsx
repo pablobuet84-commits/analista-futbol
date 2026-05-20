@@ -103,7 +103,7 @@ export default function Home() {
       const data = await res.json()
       if (data.error) {
         setStatus('error')
-        setMessages([{ id: crypto.randomUUID(), role: 'assistant', text: `Error: ${data.error}`, timestamp: Date.now() }])
+        setMessages([{ id: crypto.randomUUID(), role: 'assistant', text: data.error, timestamp: Date.now() }])
         return
       }
       taskIdRef.current = data.task_id

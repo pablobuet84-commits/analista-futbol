@@ -155,21 +155,51 @@ def add_youtube(req: YoutubeRequest):
         if os.path.exists(cookies_path):
             cookies_arg = ["--cookies", cookies_path]
 
+        # Intentar con player_client=android primero (no requiere cookies)
         result = subprocess.run(
             ["yt-dlp", "-f", "best[height<=720]", "-o", dest,
              "--js-runtimes", "node",
-             "--retries", "10",
-             "--sleep-interval", "5",
+             "--retries", "15",
+             "--sleep-interval", "3",
+             "--extractor-args", "youtube:player_client=android,web",
+             "--throttled-rate", "100K",
+             "--concurrent-fragments", "1",
              *cookies_arg,
              req.url],
             capture_output=True, timeout=600, env=env,
         )
         if result.returncode != 0:
-            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
-    except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode(errors="replace")[:500] if e.stderr else "Error desconocido"
-        stdout_msg = e.stdout.decode(errors="replace")[:200] if e.stdout else ""
-        return {"error": f"No se pudo descargar el video: {error_msg}\n{stdout_msg}"}
+            error_text = (result.stderr or b"").decode(errors="replace")
+            stdout_text = (result.stdout or b"").decode(errors="replace")
+
+            # Si falló y tenemos cookies, reintentar sin extractor-args (usan las cookies)
+            if os.path.exists(cookies_path) and "cookies" not in error_text.lower():
+                result = subprocess.run(
+                    ["yt-dlp", "-f", "best[height<=720]", "-o", dest,
+                     "--js-runtimes", "node",
+                     "--retries", "15",
+                     "--sleep-interval", "3",
+                     "--throttled-rate", "100K",
+                     "--concurrent-fragments", "1",
+                     "--cookies", cookies_path,
+                     req.url],
+                    capture_output=True, timeout=600, env=env,
+                )
+
+            if result.returncode != 0:
+                error_text = (result.stderr or b"").decode(errors="replace")
+                stdout_text = (result.stdout or b"").decode(errors="replace")[:200]
+
+                if "cookies" in error_text.lower():
+                    msg = ("YouTube bloquea las descargas en servidores. "
+                           "Para solucionarlo:\n"
+                           "1. Instalá en Chrome la extensión 'Open cookies.txt' (NO 'Get cookies.txt')\n"
+                           "2. Andá a YouTube, logueate, click en la extensión → Export\n"
+                           "3. Subí el archivo cookies.txt con el botón 🍪 en Pitubot\n"
+                           "4. Reintentá pegar el link de YouTube")
+                else:
+                    msg = f"No se pudo descargar: {error_text[:400]}"
+                return {"error": msg}
     except subprocess.TimeoutExpired:
         return {"error": "La descarga del video excedió el tiempo máximo (10 min)"}
 
