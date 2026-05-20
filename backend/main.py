@@ -39,35 +39,54 @@ class YoutubeRequest(BaseModel):
     url: str
 
 
-class UrlUploadRequest(BaseModel):
+class ChunkInitRequest(BaseModel):
     filename: str
-    url: str
+    total_chunks: int
 
 
-@app.post("/upload-url")
-async def upload_from_url(req: UrlUploadRequest):
-    import httpx
-
+@app.post("/upload/init")
+def init_chunked_upload(req: ChunkInitRequest):
     task_id = str(uuid.uuid4())
     ext = os.path.splitext(req.filename or "video.mp4")[1] or ".mp4"
     dest = os.path.join(UPLOAD_DIR, f"{task_id}{ext}")
 
-    try:
-        async with httpx.AsyncClient(timeout=600) as client:
-            response = await client.get(req.url)
-            response.raise_for_status()
-            with open(dest, "wb") as f:
-                f.write(response.content)
-    except Exception as e:
-        return {"error": f"No se pudo descargar el video desde Firebase: {str(e)}"}
+    open(dest, "wb").close()
 
     tasks[task_id] = {
         "filename": req.filename,
-        "status": "uploaded",
+        "status": "uploading",
         "path": dest,
+        "total_chunks": req.total_chunks,
+        "received_chunks": 0,
     }
 
-    return {"task_id": task_id, "filename": req.filename, "status": "uploaded"}
+    return {"task_id": task_id, "filename": req.filename, "status": "uploading"}
+
+
+@app.post("/upload/chunk/{task_id}")
+async def upload_chunk(task_id: str, chunk_index: int = 0, file: UploadFile = File(...)):
+    task = tasks.get(task_id)
+    if not task:
+        return {"error": "task not found"}
+
+    dest = task["path"]
+    content = await file.read()
+
+    with open(dest, "ab") as f:
+        f.write(content)
+
+    task["received_chunks"] = task.get("received_chunks", 0) + 1
+
+    if task["received_chunks"] >= task["total_chunks"]:
+        task["status"] = "uploaded"
+
+    return {
+        "task_id": task_id,
+        "chunk_index": chunk_index,
+        "received": task["received_chunks"],
+        "total": task["total_chunks"],
+        "status": task["status"],
+    }
 
 
 @app.post("/upload")

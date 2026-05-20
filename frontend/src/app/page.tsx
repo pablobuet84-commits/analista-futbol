@@ -41,16 +41,44 @@ export default function Home() {
     setCurrentSessionId(null)
     filenameRef.current = file.name
 
-    const formData = new FormData()
-    formData.append('file', file)
-
     try {
-      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData })
-      if (!res.ok) throw new Error('Upload failed')
-      const data = await res.json()
-      taskIdRef.current = data.task_id
+      let taskId: string
+      const CHUNK_SIZE = 5 * 1024 * 1024
 
-      const sid = await createSession(file.name, data.task_id)
+      if (file.size > CHUNK_SIZE) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+        const initRes = await fetch(`${API_BASE}/upload/init`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, total_chunks: totalChunks }),
+        })
+        if (!initRes.ok) throw new Error('Init failed')
+        const initData = await initRes.json()
+        taskId = initData.task_id
+
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * CHUNK_SIZE
+          const end = Math.min(start + CHUNK_SIZE, file.size)
+          const chunk = file.slice(start, end)
+          const formData = new FormData()
+          formData.append('file', chunk)
+          const chunkRes = await fetch(`${API_BASE}/upload/chunk/${taskId}?chunk_index=${i}`, {
+            method: 'POST',
+            body: formData,
+          })
+          if (!chunkRes.ok) throw new Error('Chunk failed')
+        }
+      } else {
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData })
+        if (!res.ok) throw new Error('Upload failed')
+        const data = await res.json()
+        taskId = data.task_id
+      }
+
+      taskIdRef.current = taskId
+      const sid = await createSession(file.name, taskId)
       setCurrentSessionId(sid)
 
       const welcomeMsg: Message = {
