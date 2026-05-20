@@ -47,7 +47,7 @@ def get_or_upload_video(task_id: str, video_path: str) -> str | None:
     if task_id in gemini_file_cache:
         return gemini_file_cache[task_id]
     try:
-        file = client.files.upload(path=video_path)
+        file = client.files.upload(file=video_path)
         gemini_file_cache[task_id] = file.uri or file.name or ""
         return gemini_file_cache[task_id]
     except Exception as e:
