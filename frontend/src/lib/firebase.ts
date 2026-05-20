@@ -3,12 +3,12 @@ import { getFirestore } from "firebase/firestore"
 import { getStorage } from "firebase/storage"
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyBsXuFWo76-mIqFwwu6CqpPWkzwgP5MC4I",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "gestion-gastos-synthonbago.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "gestion-gastos-synthonbago",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "gestion-gastos-synthonbago.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "201413854516",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:201413854516:web:2b31f6b8355b76f6a75161",
+  apiKey: "AIzaSyA5LMLp_BCGLT6WR-AfaCggxvokDBEl6DI",
+  authDomain: "analista-futbol.firebaseapp.com",
+  projectId: "analista-futbol",
+  storageBucket: "analista-futbol.firebasestorage.app",
+  messagingSenderId: "850419542745",
+  appId: "1:850419542745:web:3f89450b7e322c939a2cc8",
 }
 
 const app = initializeApp(firebaseConfig, "analista-futbol")
