@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import uuid, os, subprocess, json, shutil
+from dotenv import load_dotenv
 
 from gemini_service import ask_about_video
+
+load_dotenv()
 
 app = FastAPI(title="Pitubot API")
 
@@ -27,7 +30,23 @@ else:
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+TASKS_FILE = os.path.join(UPLOAD_DIR, "tasks.json")
+
 tasks: dict[str, dict] = {}
+
+def _save_tasks():
+    with open(TASKS_FILE, "w") as f:
+        json.dump(tasks, f)
+
+def _load_tasks():
+    global tasks
+    if os.path.exists(TASKS_FILE):
+        with open(TASKS_FILE, "r") as f:
+            tasks = json.load(f)
+    else:
+        tasks = {}
+
+_load_tasks()
 
 
 class AskRequest(BaseModel):
@@ -59,6 +78,7 @@ def init_chunked_upload(req: ChunkInitRequest):
         "total_chunks": req.total_chunks,
         "received_chunks": 0,
     }
+    _save_tasks()
 
     return {"task_id": task_id, "filename": req.filename, "status": "uploading"}
 
@@ -79,6 +99,7 @@ async def upload_chunk(task_id: str, chunk_index: int = 0, file: UploadFile = Fi
 
     if task["received_chunks"] >= task["total_chunks"]:
         task["status"] = "uploaded"
+    _save_tasks()
 
     return {
         "task_id": task_id,
@@ -104,6 +125,7 @@ async def upload_video(file: UploadFile = File(...)):
         "status": "uploaded",
         "path": dest,
     }
+    _save_tasks()
 
     return {"task_id": task_id, "filename": file.filename, "status": "uploaded"}
 
@@ -156,6 +178,7 @@ def add_youtube(req: YoutubeRequest):
         "status": "uploaded",
         "path": dest,
     }
+    _save_tasks()
 
     return {"task_id": task_id, "filename": filename, "status": "uploaded"}
 

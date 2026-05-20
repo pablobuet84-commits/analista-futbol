@@ -201,7 +201,7 @@ export default function Home() {
     setMessages(session.messages)
     taskIdRef.current = session.taskId
     filenameRef.current = session.filename
-    setVideo({ name: session.filename, size: 0, url: '' })
+    setVideo({ name: session.filename, size: 0, url: `${API_BASE}/video/${session.taskId}` })
     setStatus('done')
   }
 

@@ -7,7 +7,7 @@ load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-gemini_file_cache: dict[str, str] = {}
+gemini_file_cache: dict[str, object] = {}
 
 ANALYSIS_PROMPT = """
 Sos un asistente de análisis táctico de fútbol especializado, diseñado para ayudar a Directores Técnicos.
@@ -44,7 +44,7 @@ Pero NO te limites a esta lista. El DT puede preguntar cualquier cosa que se le 
   Esto permite al DT hacer clic en el timestamp e ir directo a ese momento del video.
 """
 
-def get_or_upload_video(task_id: str, video_path: str) -> str | None:
+def get_or_upload_video(task_id: str, video_path: str) -> object | None:
     if task_id in gemini_file_cache:
         return gemini_file_cache[task_id]
     try:
@@ -59,21 +59,21 @@ def get_or_upload_video(task_id: str, video_path: str) -> str | None:
                 break
             time.sleep(5)
             
-        gemini_file_cache[task_id] = file.uri or file.name or ""
-        return gemini_file_cache[task_id]
+        gemini_file_cache[task_id] = file
+        return file
     except Exception as e:
         print(f"Error subiendo video a Gemini: {e}")
         return None
 
 def ask_about_video(task_id: str, video_path: str, question: str, model: str = "gemini-2.0-flash") -> str:
-    file_uri = get_or_upload_video(task_id, video_path)
-    if not file_uri:
+    file = get_or_upload_video(task_id, video_path)
+    if not file:
         return "Error al procesar el video. Verificá que el archivo sea válido."
 
     contents = [
         ANALYSIS_PROMPT,
         f"Pregunta del DT: {question}",
-        genai.types.Part.from_uri(file_uri=file_uri, mime_type="video/mp4"),
+        file,
     ]
 
     try:
