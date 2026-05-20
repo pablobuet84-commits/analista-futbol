@@ -97,7 +97,7 @@ def add_youtube(req: YoutubeRequest):
     try:
         subprocess.run(
             ["yt-dlp", "-f", "best[height<=720]", "-o", dest,
-             "--extractor-args", "youtube:player_client=ios",
+             "--js-runtimes", "node",
              req.url],
             check=True, capture_output=True, timeout=300,
         )
