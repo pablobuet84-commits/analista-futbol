@@ -1,4 +1,5 @@
 import os
+import time
 from google import genai
 from dotenv import load_dotenv
 
@@ -48,6 +49,16 @@ def get_or_upload_video(task_id: str, video_path: str) -> str | None:
         return gemini_file_cache[task_id]
     try:
         file = client.files.upload(file=video_path)
+        
+        # Esperar a que el video termine de procesarse
+        while True:
+            file_info = client.files.get(name=file.name)
+            if file_info.state.name == "FAILED":
+                raise Exception("El procesamiento del video falló en los servidores de Google.")
+            if file_info.state.name == "ACTIVE":
+                break
+            time.sleep(5)
+            
         gemini_file_cache[task_id] = file.uri or file.name or ""
         return gemini_file_cache[task_id]
     except Exception as e:
